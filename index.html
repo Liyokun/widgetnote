@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LIOKUN'S SCHEDULE</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; padding: 0; width: 100vw; 
+            height: 100vh; 
+            height: 100dvh; 
+            overscroll-behavior: none; 
+            background-color: #111; 
+            background-image: url('./note1.jpg');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #fff; overflow: hidden; 
+        }
+
+        body.modal-open {
+            position: fixed;
+            width: 100%;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        
+        .header { 
+            position: relative; height: 75px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; 
+            border-bottom: 1px solid rgba(255,255,255,0.2); 
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            z-index: 10;
+        }
+        .header-title { font-size: 22px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 3px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .header-sub { font-size: 11px; color: #aaa; letter-spacing: 1px; }
+
+        .view-container { 
+            position: absolute; top: 75px; left: 0; right: 0; bottom: 0; 
+            overflow-y: auto; 
+            overscroll-behavior-y: contain; 
+            -webkit-overflow-scrolling: touch; 
+            padding: 20px; padding-bottom: 100px;
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        #tier1-days { z-index: 1; }
+        .day-card { 
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15); border-left: 4px solid #fff;
+            padding: 25px 20px; margin-bottom: 15px; border-radius: 12px; 
+            font-size: 20px; font-weight: bold; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; 
+        }
+        .day-card:active { background: rgba(0,0,0,0.7); transform: scale(0.98); }
+        .day-count { font-size: 14px; background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-weight: normal; }
+
+        #tier2-activities { 
+            z-index: 2; background: rgba(0,0,0,0.3); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            transform: translateX(100%); 
+        }
+        #tier2-activities.active { transform: translateX(0); }
+        
+        .tab-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .back-btn { font-size: 28px; padding: 5px 15px 5px 0; cursor: pointer; margin-right: 10px; font-weight: bold; }
+        .day-title-large { font-size: 24px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+
+        .activity-drawer { 
+            background: rgba(20,20,20,0.7); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; 
+            transition: 0.2s; overflow: hidden;
+        }
+        .priority-bar { width: 8px; align-self: stretch; }
+        .prio-0 { background: #ff4444; } 
+        .prio-1 { background: #ffbb33; } 
+        .prio-2 { background: #00C851; } 
+        .prio-3 { background: #33b5e5; } 
+
+        .drawer-content { flex: 1; padding: 15px; cursor: pointer; }
+        .drawer-time { font-size: 13px; color: #bbb; margin-bottom: 5px; font-family: monospace; }
+        .drawer-name { font-size: 18px; font-weight: bold; }
+        
+        .btn-delete { font-size: 20px; padding: 15px 20px; cursor: pointer; color: #ff4444; background: rgba(255,0,0,0.1); border-left: 1px solid rgba(255,255,255,0.05); }
+        .btn-delete:active { background: rgba(255,0,0,0.3); }
+
+        .fab-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: #fff; color: #000; font-size: 30px; font-weight: bold; display: flex; justify-content: center; align-items: center; z-index: 50; box-shadow: 0 4px 15px rgba(0,0,0,0.5); cursor: pointer; transition: 0.2s; }
+        .fab-btn:active { transform: scale(0.9); }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 2000; justify-content: center; align-items: center; overflow-y: auto; padding: 20px; }
+        .modal-box { width: 100%; max-width: 400px; background: #1a1a1a; border: 1px solid #444; border-radius: 16px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); margin: auto; }
+        
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        .input-group input, .input-group select, .input-group textarea { 
+            width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 8px; font-family: inherit; font-size: 15px; 
+        }
+        .input-group textarea { resize: vertical; min-height: 80px; }
+        .input-group input[type="time"] { font-family: monospace; letter-spacing: 1px; }
+        
+        .time-row { display: flex; gap: 15px; }
+        .time-row .input-group { flex: 1; }
+
+        .file-upload-wrapper { position: relative; width: 100%; height: 50px; border: 1px dashed #555; border-radius: 8px; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .file-upload-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .file-upload-text { font-size: 14px; color: #888; pointer-events: none; }
+        #img-preview-container { display: none; margin-top: 10px; text-align: center; }
+        #img-preview { max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid #333; }
+
+        .btn-row { display: flex; gap: 10px; margin-top: 25px; }
+        .btn-modal { flex: 1; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .btn-cancel { background: #333; color: #fff; }
+        .btn-save { background: #fff; color: #000; }
+        .btn-danger { background: #ff4444; color: #fff; }
+
+        .detail-banner { width: 100%; height: 180px; background-size: cover; background-position: center; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; position: relative; }
+        .detail-tag { position: absolute; top: 10px; right: 10px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #fff; }
+        .detail-time { font-size: 18px; font-family: monospace; color: #fff; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px; }
+        .detail-name { font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+        .detail-desc { font-size: 15px; color: #ccc; line-height: 1.6; background: #000; padding: 15px; border-radius: 8px; border: 1px solid #222; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">LIOKUN'S SCHEDULE</div>
+        <div class="header-sub">DATABASE MANAGER</div>
+    </div>
+
+    <div id="tier1-days" class="view-container">
+        <div id="dynamic-days-list"></div>
+
+        <div class="day-card" style="border-left: 4px solid #888; margin-top: 25px;" onclick="window.location.href='setting.html'">
+            <span>SETTING</span>
+            <span style="font-size: 20px;">💻️</span>
+        </div>
+    </div>
+
+    <div id="tier2-activities" class="view-container">
+        <div class="tab-header">
+            <div class="back-btn" onclick="closeDayView()">&#8592;</div>
+            <div class="day-title-large" id="current-day-title">THỨ ...</div>
+        </div>
+        <div id="activity-list"></div>
+        <div class="fab-btn" onclick="openAddModal()">+</div>
+    </div>
+
+    <div id="modal-detail" class="modal-overlay">
+        <div class="modal-box">
+            <div class="tab-header" style="margin-bottom: 15px;">
+                <div class="back-btn" onclick="closeModal('modal-detail')" style="font-size: 24px;">&#8592;</div>
+                <div style="font-size: 16px; font-weight: bold; color: #888;">CHI TIẾT HOẠT ĐỘNG</div>
+            </div>
+            <div id="detail-img-banner" class="detail-banner" style="display:none;">
+                <div id="detail-priority-tag" class="detail-tag">...</div>
+            </div>
+            <div class="detail-time" id="detail-time">00:00 - 00:00</div>
+            <div class="detail-name" id="detail-name">Tên hoạt động</div>
+            <div style="font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold;">GHI CHÚ / MÔ TẢ:</div>
+            <div class="detail-desc" id="detail-desc">Không có ghi chú.</div>
+            <div class="btn-row">
+                <button class="btn-modal btn-cancel" onclick="closeModal('modal-detail')">ĐÓNG</button>
+                <button class="btn-modal btn-save" onclick="openEditModalFromDetail()">CHỈNH SỬA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-form" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title" id="form-title">TẠO THẺ HOẠT ĐỘNG</div>
+            <div class="input-group">
+                <label>Tên hoạt động</label>
+                <input type="text" id="inp-name" placeholder="Ví dụ: Học Tiếng Anh...">
+            </div>
+            <div class="time-row">
+                <div class="input-group">
+                    <label>Bắt đầu</label>
+                    <input type="time" id="inp-start" required>
+                </div>
+                <div class="input-group">
+                    <label>Kết thúc</label>
+                    <input type="time" id="inp-end" required>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Mức độ (Gắn nhãn)</label>
+                <select id="inp-priority">
+                    <option value="0">Bắt buộc (Mandatory)</option>
+                    <option value="1">Quan trọng (Important)</option>
+                    <option value="2">Có ích (Useful)</option>
+                    <option value="3" selected>Giải trí (Entertainment)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Mô tả / Ghi chú</label>
+                <textarea id="inp-desc" placeholder="Nội dung ghi chú..."></textarea>
+            </div>
+            <div class="input-group">
+                <label>Ảnh Kén (Tải lên)</label>
+                <div class="file-upload-wrapper">
+                    <span class="file-upload-text" id="upload-text">Nhấn để chọn ảnh...</span>
+                    <input type="file" id="inp-image" accept="image/*" onchange="handleImageUpload(event)">
+                </div>
+                <div id="img-preview-container">
+                    <img id="img-preview" src="" alt="Preview">
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn-modal btn-cancel" onclick="closeModal('modal-form')">HỦY</button>
+                <button class="btn-modal btn-save" onclick="saveActivity()">LƯU LẠI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-delete" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title" style="color: #ff4444; border-bottom: 1px solid #551111;">XÓA HOẠT ĐỘNG?</div>
+            <div style="text-align: center; color: #ccc; margin-bottom: 25px; line-height: 1.5;">
+                Bạn có chắc chắn muốn xóa hoạt động <br><b id="delete-target-name" style="color:#fff;">...</b> không?
+            </div>
+            <div class="btn-row">
+                <button class="btn-modal btn-cancel" onclick="closeModal('modal-delete')">HỦY</button>
+                <button class="btn-modal btn-danger" onclick="confirmDelete()">XÓA BỎ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DAYS = [
+            { id: 'd2', name: 'THỨ HAI' }, { id: 'd3', name: 'THỨ BA' },
+            { id: 'd4', name: 'THỨ TƯ' }, { id: 'd5', name: 'THỨ NĂM' },
+            { id: 'd6', name: 'THỨ SÁU' }, { id: 'd7', name: 'THỨ BẢY' },
+            { id: 'd8', name: 'CHỦ NHẬT' }
+        ];
+
+        let activities = []; 
+        let currentDayId = null; 
+        let editingId = null; 
+        let deletingId = null; 
+        let currentImageBase64 = ""; 
+
+        window.onload = async function() {
+            let savedData = await localforage.getItem('liokun_schedule_data');
+            if (savedData) { activities = savedData; }
+            renderTier1Days();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewDay = urlParams.get('viewDay');
+            const editId = urlParams.get('editId');
+
+            if (viewDay) {
+                const targetDay = DAYS.find(d => d.id === viewDay);
+                if (targetDay) openDayView(targetDay.id, targetDay.name);
+            }
+
+            if (editId) {
+                const targetAct = activities.find(a => a.id === editId);
+                if (targetAct) {
+                    const targetDay = DAYS.find(d => d.id === targetAct.dayId);
+                    if (targetDay) openDayView(targetDay.id, targetDay.name);
+
+                    setTimeout(() => {
+                        editingId = targetAct.id;
+                        document.getElementById('form-title').innerText = "BỔ SUNG GHI CHÚ";
+                        document.getElementById('inp-name').value = targetAct.name;
+                        document.getElementById('inp-start').value = targetAct.startTime;
+                        document.getElementById('inp-end').value = targetAct.endTime;
+                        document.getElementById('inp-desc').value = targetAct.desc || "";
+                        document.getElementById('inp-priority').value = targetAct.priority;
+                        
+                        currentImageBase64 = targetAct.image || "";
+                        updateImagePreview(currentImageBase64);
+                        
+                        window.scrollTo(0, 0); 
+                        openModal('modal-form');
+                    }, 150); 
+                }
+            }
+        };
+
+        async function saveToDB() {
+            await localforage.setItem('liokun_schedule_data', activities);
+        }
+
+        // CẬP NHẬT: Hàm render chỉ vẽ vào thùng chứa dynamic-days-list
+        function renderTier1Days() {
+            const container = document.getElementById('dynamic-days-list');
+            container.innerHTML = '';
+
+            DAYS.forEach(day => {
+                const count = activities.filter(a => a.dayId === day.id).length;
+                
+                const card = document.createElement('div');
+                card.className = 'day-card';
+                card.onclick = () => openDayView(day.id, day.name);
+                card.innerHTML = `
+                    <span>${day.name}</span>
+                    <span class="day-count">${count > 0 ? count + ' hoạt động' : 'Trống'}</span>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openDayView(dayId, dayName) {
+            currentDayId = dayId;
+            document.getElementById('current-day-title').innerText = dayName;
+            renderTier2Activities();
+            document.getElementById('tier2-activities').classList.add('active');
+        }
+
+        function closeDayView() {
+            document.getElementById('tier2-activities').classList.remove('active');
+            currentDayId = null;
+            renderTier1Days(); 
+        }
+
+        function renderTier2Activities() {
+            const container = document.getElementById('activity-list');
+            container.innerHTML = '';
+
+            let dayActs = activities.filter(a => a.dayId === currentDayId);
+            dayActs.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+            if (dayActs.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#666; margin-top:50px; font-style:italic;">Chưa có lịch trình. Nhấn + để tạo.</div>';
+                return;
+            }
+
+            dayActs.forEach(act => {
+                const drawer = document.createElement('div');
+                drawer.className = 'activity-drawer';
+                
+                drawer.innerHTML = `
+                    <div class="priority-bar prio-${act.priority}"></div>
+                    <div class="drawer-content" onclick="openDetailView('${act.id}')">
+                        <div class="drawer-time">${act.startTime} - ${act.endTime}</div>
+                        <div class="drawer-name">${act.name}</div>
+                    </div>
+                    <div class="btn-delete" onclick="askDelete('${act.id}', '${act.name}')">&#10005;</div>
+                `;
+                container.appendChild(drawer);
+            });
+        }
+
+        function openDetailView(actId) {
+            const act = activities.find(a => a.id === actId);
+            if(!act) return;
+
+            editingId = act.id; 
+
+            document.getElementById('detail-time').innerText = `${act.startTime} - ${act.endTime}`;
+            document.getElementById('detail-name').innerText = act.name;
+            document.getElementById('detail-desc').innerText = act.desc || "Không có ghi chú.";
+
+            const banner = document.getElementById('detail-img-banner');
+            const tag = document.getElementById('detail-priority-tag');
+            
+            if (act.image) {
+                banner.style.display = "block";
+                banner.style.backgroundImage = `url('${act.image}')`;
+            } else {
+                banner.style.display = "none";
+            }
+
+            const prioNames = ["BẮT BUỘC", "QUAN TRỌNG", "CÓ ÍCH", "GIẢI TRÍ"];
+            const prioColors = ["#ff4444", "#ffbb33", "#00C851", "#33b5e5"];
+            tag.innerText = prioNames[act.priority];
+            tag.style.backgroundColor = prioColors[act.priority];
+
+            openModal('modal-detail');
+        }
+
+        function openEditModalFromDetail() {
+            closeModal('modal-detail');
+            const act = activities.find(a => a.id === editingId);
+            if(act) {
+                document.getElementById('form-title').innerText = "CẬP NHẬT THẺ";
+                document.getElementById('inp-name').value = act.name;
+                document.getElementById('inp-start').value = act.startTime;
+                document.getElementById('inp-end').value = act.endTime;
+                document.getElementById('inp-desc').value = act.desc;
+                document.getElementById('inp-priority').value = act.priority;
+                
+                currentImageBase64 = act.image || "";
+                updateImagePreview(currentImageBase64);
+                
+                openModal('modal-form');
+            }
+        }
+
+        function openAddModal() {
+            editingId = null;
+            document.getElementById('form-title').innerText = "TẠO THẺ HOẠT ĐỘNG";
+            
+            document.getElementById('inp-name').value = "";
+            document.getElementById('inp-start').value = "08:00";
+            document.getElementById('inp-end').value = "09:00";
+            document.getElementById('inp-desc').value = "";
+            document.getElementById('inp-priority').value = "3";
+            document.getElementById('inp-image').value = "";
+            currentImageBase64 = "";
+            updateImagePreview("");
+
+            openModal('modal-form');
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageBase64 = e.target.result;
+                updateImagePreview(currentImageBase64);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateImagePreview(src) {
+            const container = document.getElementById('img-preview-container');
+            const img = document.getElementById('img-preview');
+            const text = document.getElementById('upload-text');
+            
+            if (src) {
+                img.src = src;
+                container.style.display = "block";
+                text.innerText = "Đã chọn ảnh (Nhấn để đổi)";
+            } else {
+                img.src = "";
+                container.style.display = "none";
+                text.innerText = "Nhấn để chọn ảnh...";
+            }
+        }
+
+        async function saveActivity() {
+            const name = document.getElementById('inp-name').value.trim();
+            const start = document.getElementById('inp-start').value;
+            const end = document.getElementById('inp-end').value;
+            const priority = document.getElementById('inp-priority').value;
+            const desc = document.getElementById('inp-desc').value.trim();
+
+            if (!name) { alert("Vui lòng nhập tên hoạt động!"); return; }
+
+            if (editingId) {
+                const index = activities.findIndex(a => a.id === editingId);
+                if (index !== -1) {
+                    activities[index] = {
+                        ...activities[index],
+                        name: name, startTime: start, endTime: end, priority: priority, desc: desc, image: currentImageBase64
+                    };
+                }
+            } else {
+                const newAct = {
+                    id: 'ACT_' + Date.now(),
+                    dayId: currentDayId,
+                    name: name,
+                    startTime: start,
+                    endTime: end,
+                    priority: priority,
+                    desc: desc,
+                    image: currentImageBase64
+                };
+                activities.push(newAct);
+            }
+
+            await saveToDB();
+            closeModal('modal-form');
+            renderTier2Activities();
+        }
+
+        function askDelete(actId, actName) {
+            deletingId = actId;
+            document.getElementById('delete-target-name').innerText = actName;
+            openModal('modal-delete');
+        }
+
+        async function confirmDelete() {
+            if (deletingId) {
+                activities = activities.filter(a => a.id !== deletingId);
+                await saveToDB();
+                renderTier2Activities();
+            }
+            closeModal('modal-delete');
+        }
+
+        function openModal(id) { 
+            document.getElementById(id).style.display = 'flex'; 
+            document.body.classList.add('modal-open');
+        }
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none'; 
+            document.body.classList.remove('modal-open');
+        }
+    </script>
+</body>
+</html>

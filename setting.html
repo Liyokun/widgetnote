@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CÀI ĐẶT - LIOKUN</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+
+        body {
+            width: 100vw; height: 100vh; height: 100dvh;
+            background-color: #e0e5ec; /* Nền xám nhạt cao cấp */
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* TẠO HỌA TIẾT CHÌM ĐỂ LỚP KÍNH CÓ HIỆU ỨNG THỰC TẾ HƠN */
+        .bg-shape-1 { position: absolute; top: 10%; left: -10%; width: 300px; height: 300px; background: #c8d0e0; border-radius: 50%; z-index: 1; }
+        .bg-shape-2 { position: absolute; bottom: 20%; right: -10%; width: 250px; height: 250px; background: #d0d8e6; border-radius: 50%; z-index: 1; }
+
+        /* LỚP KÍNH MỜ (GLASSMORPHISM) PHỦ TOÀN MÀN HÌNH */
+        .glass-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(230, 235, 240, 0.4); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            z-index: 2; display: flex; flex-direction: column;
+        }
+
+        /* HEADER CỐ ĐỊNH */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.2);
+        }
+        .back-btn { font-size: 24px; font-weight: bold; cursor: pointer; color: #333; padding-right: 20px; }
+        .header-title { flex: 1; text-align: center; font-size: 18px; font-weight: 900; letter-spacing: 2px; color: #333; padding-right: 44px; /* Cân bằng với nút back */ }
+
+        /* KHU VỰC CHỨA CÁC TAB */
+        .content-area {
+            flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 100px; scrollbar-width: none;
+        }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARD THÔNG TIN ĐẶC (SOLID) - ĐEN SANG TRỌNG */
+        .solid-card {
+            background: #151515; /* Đặc hoàn toàn, không mờ */
+            border-radius: 20px; padding: 25px 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            color: #fff; border: 1px solid #333;
+        }
+        .card-title { font-size: 12px; color: #888; text-transform: uppercase; font-weight: bold; margin-bottom: 15px; letter-spacing: 1px;}
+
+        /* FORM NHẬP VỊ TRÍ & NÚT QUÉT */
+        .loc-input {
+            width: 100%; background: #000; color: #fff; border: 1px solid #333;
+            padding: 15px; border-radius: 12px; font-size: 16px; font-family: inherit; margin-bottom: 15px; outline: none;
+        }
+        .loc-input:focus { border-color: #33b5e5; }
+        
+        .btn-scan {
+            width: 100%; background: #33b5e5; color: #000; font-weight: bold; font-size: 16px;
+            padding: 15px; border-radius: 12px; border: none; cursor: pointer; transition: 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+        }
+        .btn-scan:active { transform: scale(0.97); }
+        .spinning { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .weather-result-box {
+            margin-top: 20px; padding: 20px; background: #0a0a0a; border-radius: 12px; border: 1px solid #222;
+            text-align: center; display: flex; flex-direction: column; gap: 10px;
+        }
+        .wx-icon { font-size: 45px; }
+        .wx-text { font-size: 16px; font-weight: bold; color: #00C851; }
+
+        /* TEXTAREA GHI CHÚ KẺ Ô LY TRẮNG NHƯ APP NOTE THẬT */
+        .ruled-textarea {
+            width: 100%; height: 350px; background-color: transparent;
+            color: #fff; font-size: 15px; line-height: 30px;
+            border: none; outline: none; resize: none; font-family: inherit;
+            
+            /* Kẻ ô ly trắng sắc nét */
+            background-image: linear-gradient(to bottom, transparent 29px, rgba(255, 255, 255, 0.3) 29px);
+            background-size: 100% 30px; background-attachment: local;
+        }
+
+        .save-status { text-align: right; font-size: 11px; color: #888; margin-top: 10px; font-style: italic; }
+
+        /* THANH ĐIỀU HƯỚNG DƯỚI CÙNG (BOTTOM NAV) */
+        .bottom-nav {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            display: flex; background: rgba(255,255,255,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,0.8);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .nav-item {
+            flex: 1; padding: 15px 0; text-align: center; cursor: pointer;
+            color: #666; font-size: 12px; font-weight: bold; transition: 0.2s; display: flex; flex-direction: column; gap: 5px;
+        }
+        .nav-icon { font-size: 22px; }
+        .nav-item.active { color: #000; }
+        .nav-item.active .nav-icon { transform: translateY(-3px) scale(1.1); }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-shape-1"></div>
+    <div class="bg-shape-2"></div>
+
+    <div class="glass-overlay">
+        
+        <div class="header">
+            <div class="back-btn" onclick="window.location.href='index.html'">&#8592;</div>
+            <div class="header-title" id="main-title">THỜI TIẾT & VỊ TRÍ</div>
+        </div>
+
+        <div class="content-area">
+            
+            <div id="tab-weather" class="tab-content active">
+                <div class="solid-card">
+                    <div class="card-title">Thiết lập trạm dự báo</div>
+                    <input type="text" id="loc-input" class="loc-input" placeholder="Nhập tỉnh/thành phố">
+                    <button class="btn-scan" id="btn-weather" onclick="scanWeather()">
+                        <span id="scan-icon">📡</span> KHỞI ĐỘNG
+                    </button>
+
+                    <div class="weather-result-box" id="wx-box" style="display: none;">
+                        <div class="wx-icon" id="wx-icon">☀️</div>
+                        <div class="wx-text" id="wx-text">--</div>
+                    </div>
+                    <div class="save-status" style="margin-top: 15px; text-align:center;">Dữ liệu sẽ tự động gửi cho Widget.</div>
+                </div>
+            </div>
+
+            <div id="tab-welcome-note" class="tab-content">
+                <div class="solid-card">
+                    <div class="card-title">SỔ TAY GHI CHÚ NHANH</div>
+                    <textarea class="ruled-textarea" id="inp-welcome-note" placeholder="Nhập ghi chú nhanh hiển thị ngay ngoài sảnh widget..." oninput="autoSave('liokun_welcome_notes', 'inp-welcome-note', 'status-1')"></textarea>
+                    <div class="save-status" id="status-1">Đã đồng bộ dữ liệu.</div>
+                </div>
+            </div>
+
+            <div id="tab-general-note" class="tab-content">
+                <div class="solid-card">
+                    <div class="card-title">GHI CHÚ TỔNG HỢP</div>
+                    <textarea class="ruled-textarea" id="inp-general-note" placeholder="Trút mọi suy nghĩ, dự định hoặc copy tài liệu vào đây..." oninput="autoSave('liokun_general_notes', 'inp-general-note', 'status-2')"></textarea>
+                    <div class="save-status" id="status-2">Đã đồng bộ dữ liệu.</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('tab-weather', this, 'THỜI TIẾT & VỊ TRÍ')">
+                <span class="nav-icon">🌍</span>
+                <span>VỊ TRÍ</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('tab-welcome-note', this, 'SỔ TAY WIDGET')">
+                <span class="nav-icon">📝</span>
+                <span>SỔ TAY</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('tab-general-note', this, 'KHO GHI CHÚ')">
+                <span class="nav-icon">📦</span>
+                <span>TỔNG HỢP</span>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ================= XỬ LÝ CHUYỂN TAB =================
+        function switchTab(tabId, element, title) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+            document.getElementById('main-title').innerText = title;
+        }
+
+        // ================= TẢI DỮ LIỆU KHI MỞ TRANG =================
+        window.onload = async function() {
+            // Tải Ghi chú
+            let wNotes = await localforage.getItem('liokun_welcome_notes');
+            if(wNotes) document.getElementById('inp-welcome-note').value = wNotes;
+
+            let gNotes = await localforage.getItem('liokun_general_notes');
+            if(gNotes) document.getElementById('inp-general-note').value = gNotes;
+
+            // Tải trạng thái thời tiết cũ
+            let wxData = await localforage.getItem('liokun_weather_data');
+            if(wxData) {
+                document.getElementById('wx-box').style.display = 'flex';
+                document.getElementById('wx-text').innerText = wxData;
+                // Nhận diện icon cũ từ chuỗi nếu có (Mặc định hiện ⛅)
+                document.getElementById('wx-icon').innerText = '⛅';
+            }
+        };
+
+        // ================= TỰ ĐỘNG LƯU GHI CHÚ (DEBOUNCE) =================
+        let timeout = null;
+        function autoSave(dbKey, inputId, statusId) {
+            let statusEl = document.getElementById(statusId);
+            statusEl.innerText = "Đang gõ...";
+            statusEl.style.color = "#ffbb33";
+
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                let content = document.getElementById(inputId).value;
+                await localforage.setItem(dbKey, content);
+                statusEl.innerText = "Đã lưu thành công ✓";
+                statusEl.style.color = "#00C851";
+            }, 800); // Ngừng gõ 0.8s sẽ tự lưu
+        }
+
+        // ================= API THỜI TIẾT OPEN-METEO (MIỄN PHÍ) =================
+        async function scanWeather() {
+            const locInput = document.getElementById('loc-input').value.trim();
+            if(!locInput) { alert("Vui lòng nhập vị trí!"); return; }
+
+            const btn = document.getElementById('btn-weather');
+            const icon = document.getElementById('scan-icon');
+            
+            // Bật hiệu ứng xoay
+            btn.innerHTML = `<span id="scan-icon" class="spinning">📡</span> ĐANG QUÉT API...`;
+            btn.style.background = "#ffbb33";
+
+            try {
+                // Bước 1: Lấy Tọa độ (Lat/Lon) từ tên địa phương
+                let geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locInput)}&count=1&language=vi`);
+                let geoData = await geoRes.json();
+                
+                if(!geoData.results || geoData.results.length === 0) throw new Error("Không tìm thấy khu vực này!");
+                
+                let lat = geoData.results[0].latitude;
+                let lon = geoData.results[0].longitude;
+                let cityName = geoData.results[0].name;
+
+                // Bước 2: Dùng Tọa độ lấy Thời tiết hiện tại
+                let wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                let wxData = await wxRes.json();
+                
+                let temp = Math.round(wxData.current_weather.temperature);
+                let code = wxData.current_weather.weathercode;
+
+                // Bộ giải mã mã thời tiết sang Icon và Tiếng Việt
+                let condition = decodeWeather(code);
+                
+                // Chuỗi xuất ra đưa vào Widget
+                let finalString = `${cityName} • ${temp}°C ${condition.text}`;
+
+                // Cập nhật giao diện
+                document.getElementById('wx-box').style.display = 'flex';
+                document.getElementById('wx-icon').innerText = condition.icon;
+                document.getElementById('wx-text').innerText = finalString;
+
+                // Đẩy vào Ngăn kéo cho Widget
+                await localforage.setItem('liokun_weather_data', finalString);
+
+                btn.style.background = "#00C851";
+                btn.innerHTML = `<span id="scan-icon">✔️</span> THÀNH CÔNG`;
+
+            } catch(error) {
+                alert(error.message);
+                btn.style.background = "#ff4444";
+                btn.innerHTML = `<span id="scan-icon">❌</span> LỖI`;
+            }
+
+            // Trả lại trạng thái nút sau 2 giây
+            setTimeout(() => {
+                btn.style.background = "#33b5e5";
+                btn.innerHTML = `<span id="scan-icon">📡</span> KHỞI ĐỘNG`;
+            }, 2000);
+        }
+
+        // BẢNG MÃ THỜI TIẾT WMO (World Meteorological Organization)
+        function decodeWeather(code) {
+            if (code === 0) return { icon: '☀️', text: 'Nắng trong' };
+            if (code === 1 || code === 2 || code === 3) return { icon: '⛅', text: 'Trời có mây' };
+            if (code === 45 || code === 48) return { icon: '🌫️', text: 'Sương mù' };
+            if (code >= 51 && code <= 55) return { icon: '🌧️', text: 'Mưa phùn' };
+            if (code >= 61 && code <= 65) return { icon: '☔', text: 'Mưa rào' };
+            if (code >= 71 && code <= 77) return { icon: '❄️', text: 'Tuyết rơi' };
+            if (code >= 80 && code <= 82) return { icon: '⛈️', text: 'Mưa lớn' };
+            if (code >= 95) return { icon: '🌩️', text: 'Bão sấm sét' };
+            return { icon: '🌡️', text: 'Không rõ' };
+        }
+    </script>
+</body>
+</html>

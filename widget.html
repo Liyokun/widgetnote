@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WIDGET LIOKUN</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        
+        body {
+            width: 100vw; height: 100vh; height: 100dvh;
+            background-color: #000;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Segoe UI', sans-serif; color: #fff;
+            overflow: hidden;
+        }
+
+        .widget-frame {
+            width: 90vw; 
+            height: 66vh; 
+            max-width: 500px;
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            background: #111;
+        }
+
+        #widget-bg {
+            position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
+            background-size: cover; background-position: center;
+            filter: blur(1px); opacity: 0.9; z-index: 0; transition: 0.5s;
+        }
+
+        .view-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; z-index: 10;
+        }
+        .view-layer.active { display: flex; }
+
+        /* ==================== 1. TRANG CHÀO MỪNG ==================== */
+        #view-welcome {
+            background-image: url('./note1a.jpg');
+            background-size: cover; background-position: center;
+            z-index: 20; 
+            padding: 25px 20px; 
+            justify-content: space-between; 
+            align-items: center; 
+            text-align: center;
+        }
+        .welcome-title {
+            font-size: 24px; 
+            font-weight: 900; letter-spacing: 4px; text-transform: uppercase;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.8); margin-bottom: 0;
+        }
+        
+        /* FIX: Kén chứa thông tin sẽ bị khóa không cho cuộn */
+        .welcome-capsule {
+            flex: 1; 
+            width: 100%;
+            margin-top: 15px; margin-bottom: 15px;
+            background: rgba(10, 10, 10, 0.95); 
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Cố định kén hoàn toàn */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        /* FIX: Tạo vùng cuộn RIÊNG chỉ dành cho giấy ô ly */
+        .ruled-paper-wrapper {
+            flex: 1;
+            overflow-y: auto; /* Chỉ cho phép chữ cuộn tại đây */
+            scrollbar-width: none;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px; /* Cách nút ghi chú ra một chút */
+        }
+        
+        /* FIX: Giấy ô ly tự kéo dài vô tận theo chữ */
+        .ruled-paper-content {
+            color: #fff;
+            font-size: 14px;
+            line-height: 30px; 
+            text-align: left; 
+            white-space: pre-wrap;
+            word-break: break-word; 
+            flex-grow: 1; 
+            min-height: 100%; 
+            
+            /* Vẽ dòng kẻ trắng mờ */
+            background-image: linear-gradient(
+                to bottom, 
+                transparent 0px, 
+                transparent 29px, 
+                rgba(255, 255, 255, 1) 29px, 
+                rgba(255, 255, 255, 1) 30px
+            );
+            background-size: 100% 30px;
+            background-repeat: repeat-y; /* Ép buộc sinh thêm kẻ ngang khi văn bản dài ra */
+            background-attachment: local;
+        }
+
+        /* FIX: Nút cài đặt giờ nằm ngoài vùng cuộn, luôn dính chặt ở đáy kén */
+        .setting-btn-capsule {
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            flex-shrink: 0; /* Đảm bảo nút không bao giờ bị bóp méo hay thu nhỏ */
+            transition: 0.2s;
+        }
+        .setting-btn-capsule:active { background: rgba(255,255,255,0.2); transform: scale(0.98); }
+
+        .btn-activate {
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.4); padding: 12px 40px; border-radius: 30px;
+            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-activate:active { transform: scale(0.95); background: #fff; color: #000; }
+
+        /* ==================== 2. TRANG SẢNH ==================== */
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .time-box { display: flex; flex-direction: column; }
+        .clock { font-size: 28px; font-weight: bold; }
+        .weather { font-size: 12px; color: #ccc; }
+        .btn-snap { font-size: 24px; cursor: pointer; padding: 5px; opacity: 0.8; }
+        .btn-snap:active { transform: scale(1.1); opacity: 1; }
+
+        .middle-scroll {
+            flex: 1; overflow-y: auto; padding: 15px; 
+            overscroll-behavior-y: contain; scrollbar-width: none;
+        }
+        
+        .k-card {
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; 
+            padding: 15px; margin-bottom: 15px; cursor: pointer;
+            height: 110px; display: flex; flex-direction: column; transition: 0.2s; position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .k-card:active { transform: scale(0.98); background: rgba(255,255,255,0.15); }
+        .k-title { font-size: 16px; font-weight: bold; color: #fff; margin-bottom: 5px; text-transform: uppercase; }
+        .k-desc { 
+            font-size: 13px; color: #bbb; line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; 
+        }
+
+        .k-card-large {
+            height: 220px; 
+            background: rgba(0,0,0,1); backdrop-filter: blur(50px); -webkit-backdrop-filter: blur(50px);
+        }
+        .k-large-header { font-size: 11px; opacity: 0.7; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; }
+        .k-large-body { display: flex; flex: 1; overflow: hidden; gap: 12px; }
+        .k-large-img { width: 45%; height: 100%; border-radius: 10px; object-fit: cover; border: 1px solid rgba(255,255,255,0.2); display: none; }
+        .k-large-info { flex: 1; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+        .k-large-title { font-size: 20px; font-weight: 900; line-height: 1.2; text-transform: uppercase; margin-bottom: 5px; color: #fff; }
+        .k-large-desc { 
+            font-size: 13px; 
+            color: #ccc; 
+            overflow-y: auto; 
+            flex: 1; 
+            padding-right: 5px; 
+            line-height: 1.5; 
+            scrollbar-width: none; 
+            white-space: pre-wrap; 
+            word-break: break-all;
+        }
+        
+        .k-large-footer { 
+            text-align: center; font-size: 12px; color: #aaa; margin-top: 10px; 
+            padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); 
+            font-weight: bold; cursor: pointer; 
+        }
+        .k-large-footer:active { color: #fff; }
+
+        .bottom-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-btn { font-size: 24px; font-weight: bold; cursor: pointer; padding: 5px 15px; }
+        .next-act { flex: 1; text-align: center; font-size: 12px; }
+        .next-title { font-weight: bold; color: #fff; font-size: 14px; text-transform: uppercase; }
+
+        /* ==================== CÁC TRANG CHI TIẾT CHUNG ==================== */
+        .sub-header {
+            display: flex; align-items: center; padding: 15px 20px;
+            background: rgba(0,0,0,0.8); border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; font-weight: bold; }
+        .sub-title { font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
+        
+        .list-container { flex: 1; overflow-y: auto; padding: 15px; scrollbar-width: none; }
+        
+        .list-item { 
+            background: #000; 
+            border: 1px solid #333; border-left: 3px solid #fff; 
+            padding: 12px 15px; margin-bottom: 10px; border-radius: 8px;
+            color: #fff; 
+        }
+        .day-group { font-weight: bold; font-size: 18px; color: #fff; margin: 15px 0 10px 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        
+        .btn-full-width {
+            margin: 15px; padding: 15px; text-align: center; font-weight: bold; background: #fff; color: #000; border-radius: 12px; cursor: pointer;
+        }
+
+        /* FIX: Ép màu đen tuyền cho chữ ở trang Ghi chú tổng hợp */
+        #view-notes { background-color: #fff; background-image: url('./note1.jpg'); background-size: cover; background-position: center;}
+        #view-notes .list-container { 
+            background: transparent; backdrop-filter: none; background: rgba(255, 255,255,0.7);
+            color: #000 !important; /* Lệnh ép màu ưu tiên cao nhất */
+            font-weight: 500;
+            white-space: pre-wrap; 
+            word-break: break-word;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+    </style>
+</head><body>
+
+    <div class="widget-frame">
+        <div id="widget-bg"></div>
+
+        <div id="view-welcome" class="view-layer active">
+            <div class="welcome-title">LIOKUN'S<br>SCHEDULE</div>
+            
+            <div class="welcome-capsule">
+                <div class="ruled-paper-wrapper">
+                    <div class="ruled-paper-content" id="welcome-notes-content"></div>
+                </div>
+                <div class="setting-btn-capsule" onclick="openApp('setting.html')">GHI CHÚ 🏷️</div>
+            </div>
+
+            <div class="btn-activate" onclick="switchView('view-lobby')">MỞ LIOKUN</div>
+        </div>
+
+        <div id="view-lobby" class="view-layer">
+            <div class="top-bar">
+                <div class="time-box">
+                    <span class="clock" id="clock-display">00:00</span>
+                    <span class="weather" id="weather-display">Đang quét dữ liệu...</span>
+                </div>
+                <div class="btn-snap" onclick="loadData()">📸</div>
+            </div>
+
+            <div class="middle-scroll">
+                
+                <div class="k-card k-card-large" style="border-left: 4px solid #fff;">
+                    <div class="k-large-header">HOẠT ĐỘNG HIỆN TẠI</div>
+                    <div class="k-large-body">
+                        <img id="cur-img" class="k-large-img" src="" alt="Ảnh hoạt động">
+                        <div class="k-large-info">
+                            <div class="k-large-title" id="cur-title">ĐANG QUÉT...</div>
+                            <div class="k-large-desc" id="cur-desc">Vui lòng chờ lấy dữ liệu</div>
+                        </div>
+                    </div>
+                    <div class="k-large-footer" onclick="openCurrentNote()">Nhấp thêm ghi chú ✏️</div>
+                </div>
+
+                <div class="k-card" onclick="switchView('view-notes')">
+                    <div class="k-title">GHI CHÚ TỔNG HỢP</div>
+                    <div class="k-desc">Nhấp để xem toàn bộ các ghi chú chung của hệ thống.</div>
+                </div>
+
+                <div class="k-card" onclick="switchView('view-today')">
+                    <div class="k-title">LỊCH TRÌNH HÔM NAY</div>
+                    <div class="k-desc">Nhấp để xem toàn bộ danh sách các việc cần làm trong ngày.</div>
+                </div>
+
+                <div class="k-card" onclick="switchView('view-weekly')">
+                    <div class="k-title">LỊCH TRÌNH TUẦN</div>
+                    <div class="k-desc">Tổng hợp và tính toán tổng thời gian của từng hoạt động từ Thứ 2 đến Chủ nhật.</div>
+                </div>
+
+                <div class="k-card" onclick="switchView('view-freetime')">
+                    <div class="k-title">THỜI GIAN RẢNH</div>
+                    <div class="k-desc">Quét các khoảng trống trong lịch trình mỗi ngày để bạn dễ dàng bố trí việc đột xuất.</div>
+                </div>
+            </div>
+
+            <div class="bottom-bar">
+                <div class="nav-btn" onclick="switchView('view-welcome')">&#8592;</div>
+                <div class="next-act">
+                    <div style="opacity: 0.7; margin-bottom:3px">Tiếp theo lúc <span id="next-time">--:--</span></div>
+                    <div class="next-title" id="next-title">TRỐNG LỊCH</div>
+                </div>
+                <div class="nav-btn" onclick="openApp('index.html')">&#8594;</div>
+            </div>
+        </div>
+
+        <div id="view-notes" class="view-layer">
+            <div class="sub-header">
+                <div class="back-btn" onclick="switchView('view-lobby')">&#8592;</div>
+                <div class="sub-title" style="color:#000;">GHI CHÚ TỔNG HỢP</div>
+            </div>
+            <div class="list-container" id="notes-content">
+                </div>
+        </div>
+
+        <div id="view-today" class="view-layer">
+            <div class="sub-header">
+                <div class="back-btn" onclick="switchView('view-lobby')">&#8592;</div>
+                <div class="sub-title">HÔM NAY</div>
+            </div>
+            <div class="list-container" id="list-today"></div>
+            <div class="btn-full-width" onclick="openTodayInApp()">MỞ LỊCH HÔM NAY TẠI APP</div>
+        </div>
+
+        <div id="view-weekly" class="view-layer">
+            <div class="sub-header">
+                <div class="back-btn" onclick="switchView('view-lobby')">&#8592;</div>
+                <div class="sub-title">LỊCH TRÌNH TUẦN</div>
+            </div>
+            <div class="list-container" id="list-weekly"></div>
+            <div class="btn-full-width" onclick="openApp('index.html')">MỞ APP QUẢN LÝ</div>
+        </div>
+
+        <div id="view-freetime" class="view-layer">
+            <div class="sub-header">
+                <div class="back-btn" onclick="switchView('view-lobby')">&#8592;</div>
+                <div class="sub-title">THỜI GIAN RẢNH</div>
+            </div>
+            <div class="list-container" id="list-freetime"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const DAY_MAP = ['d8', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']; 
+        const DAY_NAMES = { 'd2':'THỨ HAI', 'd3':'THỨ BA', 'd4':'THỨ TƯ', 'd5':'THỨ NĂM', 'd6':'THỨ SÁU', 'd7':'THỨ BẢY', 'd8':'CHỦ NHẬT' };
+        let allActivities = [];
+        let currentActId = null; 
+
+        window.onload = function() {
+            initWelcomeNote();
+        };
+
+        async function initWelcomeNote() {
+            let welcomeNotes = await localforage.getItem('liokun_welcome_notes');
+            // Dùng innerText để giữ nguyên các dấu xuống dòng
+            document.getElementById('welcome-notes-content').innerText = welcomeNotes ? welcomeNotes : "";
+        }
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view-layer').forEach(el => el.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            
+            if(viewId === 'view-welcome') {
+                document.getElementById('widget-bg').style.display = 'none';
+                initWelcomeNote(); 
+            } else {
+                document.getElementById('widget-bg').style.display = 'block';
+                loadData(); 
+            }
+        }
+
+        function openApp(url) {
+            window.location.href = url;
+        }
+
+        function openCurrentNote() {
+            if (currentActId) {
+                openApp('index.html?editId=' + currentActId);
+            } else {
+                openApp('index.html');
+            }
+        }
+
+        function openTodayInApp() {
+            let todayId = DAY_MAP[new Date().getDay()];
+            openApp('index.html?viewDay=' + todayId);
+        }
+
+        document.addEventListener("visibilitychange", function() {
+            if (document.hidden) {
+                switchView('view-welcome');
+                initWelcomeNote();
+            }
+        });
+
+        async function loadData() {
+            allActivities = await localforage.getItem('liokun_schedule_data') || [];
+            
+            let weatherData = await localforage.getItem('liokun_weather_data');
+            document.getElementById('weather-display').innerText = weatherData ? weatherData : "Dữ liệu trống";
+
+            // ĐÃ FIX: Lấy dữ liệu GHI CHÚ TỔNG HỢP và in ra bằng innerText
+            let notesData = await localforage.getItem('liokun_general_notes');
+            let notesContentEl = document.getElementById('notes-content');
+            if (notesData) {
+                notesContentEl.innerText = notesData;
+            } else {
+                notesContentEl.innerHTML = "<div style='text-align:center; color:#555; margin-top:30px; font-style:italic;'>Dữ liệu trống</div>";
+            }
+
+            let now = new Date();
+            let hours = String(now.getHours()).padStart(2, '0');
+            let mins = String(now.getMinutes()).padStart(2, '0');
+            let currentTimeStr = `${hours}:${mins}`;
+            let currentDayId = DAY_MAP[now.getDay()];
+
+            document.getElementById('clock-display').innerText = currentTimeStr;
+
+            let todayActs = allActivities.filter(a => a.dayId === currentDayId);
+            todayActs.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+            let currentAct = todayActs.find(a => currentTimeStr >= a.startTime && currentTimeStr <= a.endTime);
+            let nextAct = todayActs.find(a => a.startTime > currentTimeStr);
+
+            if(currentAct) {
+                currentActId = currentAct.id; 
+                document.getElementById('cur-title').innerText = currentAct.name;
+                document.getElementById('cur-desc').innerText = currentAct.desc || "Không có ghi chú.";
+                
+                const imgEl = document.getElementById('cur-img');
+                if(currentAct.image) {
+                    imgEl.src = currentAct.image;
+                    imgEl.style.display = "block";
+                    document.getElementById('widget-bg').style.backgroundImage = `url('${currentAct.image}')`;
+                } else {
+                    imgEl.style.display = "none";
+                    document.getElementById('widget-bg').style.backgroundColor = "#222";
+                }
+            } else {
+                currentActId = null;
+                document.getElementById('cur-title').innerText = "THỜI GIAN TRỐNG";
+                document.getElementById('cur-desc').innerText = "Hiện tại không có lịch trình nào.";
+                document.getElementById('cur-img').style.display = "none";
+                document.getElementById('widget-bg').style.backgroundColor = "#222";
+                document.getElementById('widget-bg').style.backgroundImage = "none";
+            }
+
+            if(nextAct) {
+                document.getElementById('next-time').innerText = nextAct.startTime;
+                document.getElementById('next-title').innerText = nextAct.name;
+            } else {
+                document.getElementById('next-time').innerText = "--:--";
+                document.getElementById('next-title').innerText = "HẾT LỊCH HÔM NAY";
+            }
+
+            renderToday(todayActs);
+            renderWeekly();
+            renderFreeTime();
+        }
+
+        function renderToday(todayActs) {
+            let html = "";
+            todayActs.forEach(act => {
+                html += `<div class="list-item">
+                    <div style="font-size:12px; color:#aaa; font-family:monospace">${act.startTime} - ${act.endTime}</div>
+                    <div style="font-weight:bold; font-size:16px">${act.name}</div>
+                </div>`;
+            });
+            if(!html) html = "<div>Không có lịch trình.</div>";
+            document.getElementById('list-today').innerHTML = html;
+        }
+
+        function calcDuration(start, end) {
+            let [sh, sm] = start.split(':').map(Number);
+            let [eh, em] = end.split(':').map(Number);
+            let totalMins = (eh * 60 + em) - (sh * 60 + sm);
+            if (totalMins < 0) return "Lỗi giờ";
+            let h = Math.floor(totalMins / 60);
+            let m = totalMins % 60;
+            if (h > 0 && m > 0) return `${h}h ${m}p`;
+            if (h > 0) return `${h}h`;
+            return `${m} phút`;
+        }
+
+        function renderWeekly() {
+            let html = "";
+            Object.keys(DAY_NAMES).forEach(dId => {
+                let acts = allActivities.filter(a => a.dayId === dId).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                if (acts.length > 0) {
+                    html += `<div class="day-group">${DAY_NAMES[dId]}</div>`;
+                    acts.forEach(act => {
+                        let duration = calcDuration(act.startTime, act.endTime);
+                        html += `<div class="list-item" style="display:flex; justify-content:space-between">
+                            <span>${act.name}</span>
+                            <span style="font-family:monospace">[${duration}]</span>
+                        </div>`;
+                    });
+                }
+            });
+            document.getElementById('list-weekly').innerHTML = html;
+        }
+
+        function timeToMins(timeStr) {
+            let [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        }
+        function minsToTime(mins) {
+            let h = String(Math.floor(mins / 60)).padStart(2, '0');
+            let m = String(mins % 60).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        function renderFreeTime() {
+            let html = "";
+            Object.keys(DAY_NAMES).forEach(dId => {
+                let acts = allActivities.filter(a => a.dayId === dId).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                let gaps = [];
+                let currentMins = 0; 
+
+                acts.forEach(act => {
+                    let startMins = timeToMins(act.startTime);
+                    let endMins = timeToMins(act.endTime);
+                    if (startMins - currentMins >= 30) {
+                        gaps.push(`${minsToTime(currentMins)} - ${act.startTime}`);
+                    }
+                    if (endMins > currentMins) currentMins = endMins;
+                });
+
+                if (1440 - currentMins >= 30) {
+                    gaps.push(`${minsToTime(currentMins)} - 23:59`);
+                }
+
+                if (gaps.length > 0) {
+                    html += `<div class="day-group">${DAY_NAMES[dId]}</div>`;
+                    gaps.forEach(gap => {
+                        html += `<div class="list-item" style="font-family:monospace; text-align:center">${gap}</div>`;
+                    });
+                }
+            });
+            document.getElementById('list-freetime').innerHTML = html || "<div>Kín lịch cả tuần!</div>";
+        }
+
+    </script>
+</body>
+</html>
+
