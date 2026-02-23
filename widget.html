@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>WIDGET LIOKUN</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
@@ -40,95 +41,6 @@
             display: none; flex-direction: column; z-index: 10;
         }
         .view-layer.active { display: flex; }
-
-        /* ==================== 1. TRANG CHÀO MỪNG ==================== */
-        #view-welcome {
-            background-image: url('./note1a.jpg');
-            background-size: cover; background-position: center;
-            z-index: 20; 
-            padding: 25px 20px; 
-            justify-content: space-between; 
-            align-items: center; 
-            text-align: center;
-        }
-        .welcome-title {
-            font-size: 24px; 
-            font-weight: 900; letter-spacing: 4px; text-transform: uppercase;
-            text-shadow: 0 4px 15px rgba(0,0,0,0.8); margin-bottom: 0;
-        }
-        
-        /* FIX: Kén chứa thông tin sẽ bị khóa không cho cuộn */
-        .welcome-capsule {
-            flex: 1; 
-            width: 100%;
-            margin-top: 15px; margin-bottom: 15px;
-            background: rgba(10, 10, 10, 0.95); 
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* Cố định kén hoàn toàn */
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-
-        /* FIX: Tạo vùng cuộn RIÊNG chỉ dành cho giấy ô ly */
-        .ruled-paper-wrapper {
-            flex: 1;
-            overflow-y: auto; /* Chỉ cho phép chữ cuộn tại đây */
-            scrollbar-width: none;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px; /* Cách nút ghi chú ra một chút */
-        }
-        
-        /* FIX: Giấy ô ly tự kéo dài vô tận theo chữ */
-        .ruled-paper-content {
-            color: #fff;
-            font-size: 14px;
-            line-height: 30px; 
-            text-align: left; 
-            white-space: pre-wrap;
-            word-break: break-word; 
-            flex-grow: 1; 
-            min-height: 100%; 
-            
-            /* Vẽ dòng kẻ trắng mờ */
-            background-image: linear-gradient(
-                to bottom, 
-                transparent 0px, 
-                transparent 29px, 
-                rgba(255, 255, 255, 1) 29px, 
-                rgba(255, 255, 255, 1) 30px
-            );
-            background-size: 100% 30px;
-            background-repeat: repeat-y; /* Ép buộc sinh thêm kẻ ngang khi văn bản dài ra */
-            background-attachment: local;
-        }
-
-        /* FIX: Nút cài đặt giờ nằm ngoài vùng cuộn, luôn dính chặt ở đáy kén */
-        .setting-btn-capsule {
-            padding: 12px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 13px;
-            cursor: pointer;
-            border: 1px solid rgba(255,255,255,0.2);
-            color: #fff;
-            flex-shrink: 0; /* Đảm bảo nút không bao giờ bị bóp méo hay thu nhỏ */
-            transition: 0.2s;
-        }
-        .setting-btn-capsule:active { background: rgba(255,255,255,0.2); transform: scale(0.98); }
-
-        .btn-activate {
-            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.4); padding: 12px 40px; border-radius: 30px;
-            font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s;
-            flex-shrink: 0;
-        }
-        .btn-activate:active { transform: scale(0.95); background: #fff; color: #000; }
 
         /* ==================== 2. TRANG SẢNH ==================== */
         .top-bar {
@@ -219,11 +131,10 @@
             margin: 15px; padding: 15px; text-align: center; font-weight: bold; background: #fff; color: #000; border-radius: 12px; cursor: pointer;
         }
 
-        /* FIX: Ép màu đen tuyền cho chữ ở trang Ghi chú tổng hợp */
         #view-notes { background-color: #fff; background-image: url('./note1.jpg'); background-size: cover; background-position: center;}
         #view-notes .list-container { 
             background: transparent; backdrop-filter: none; background: rgba(255, 255,255,0.7);
-            color: #000 !important; /* Lệnh ép màu ưu tiên cao nhất */
+            color: #000 !important;
             font-weight: 500;
             white-space: pre-wrap; 
             word-break: break-word;
@@ -236,20 +147,7 @@
     <div class="widget-frame">
         <div id="widget-bg"></div>
 
-        <div id="view-welcome" class="view-layer active">
-            <div class="welcome-title">LIOKUN'S<br>SCHEDULE</div>
-            
-            <div class="welcome-capsule">
-                <div class="ruled-paper-wrapper">
-                    <div class="ruled-paper-content" id="welcome-notes-content"></div>
-                </div>
-                <div class="setting-btn-capsule" onclick="openApp('setting.html')">GHI CHÚ 🏷️</div>
-            </div>
-
-            <div class="btn-activate" onclick="switchView('view-lobby')">MỞ LIOKUN</div>
-        </div>
-
-        <div id="view-lobby" class="view-layer">
+        <div id="view-lobby" class="view-layer active">
             <div class="top-bar">
                 <div class="time-box">
                     <span class="clock" id="clock-display">00:00</span>
@@ -294,7 +192,7 @@
             </div>
 
             <div class="bottom-bar">
-                <div class="nav-btn" onclick="switchView('view-welcome')">&#8592;</div>
+                <div class="nav-btn" style="visibility: hidden;">&#8592;</div>
                 <div class="next-act">
                     <div style="opacity: 0.7; margin-bottom:3px">Tiếp theo lúc <span id="next-time">--:--</span></div>
                     <div class="next-title" id="next-title">TRỐNG LỊCH</div>
@@ -347,26 +245,17 @@
         let currentActId = null; 
 
         window.onload = function() {
-            initWelcomeNote();
+            // Nạp dữ liệu thẳng vào trang Sảnh khi vừa mở file
+            loadData();
         };
-
-        async function initWelcomeNote() {
-            let welcomeNotes = await localforage.getItem('liokun_welcome_notes');
-            // Dùng innerText để giữ nguyên các dấu xuống dòng
-            document.getElementById('welcome-notes-content').innerText = welcomeNotes ? welcomeNotes : "";
-        }
 
         function switchView(viewId) {
             document.querySelectorAll('.view-layer').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
             
-            if(viewId === 'view-welcome') {
-                document.getElementById('widget-bg').style.display = 'none';
-                initWelcomeNote(); 
-            } else {
-                document.getElementById('widget-bg').style.display = 'block';
-                loadData(); 
-            }
+            // Đảm bảo widget-bg luôn hiện và dữ liệu luôn được nạp khi chuyển trang
+            document.getElementById('widget-bg').style.display = 'block';
+            loadData(); 
         }
 
         function openApp(url) {
@@ -388,8 +277,8 @@
 
         document.addEventListener("visibilitychange", function() {
             if (document.hidden) {
-                switchView('view-welcome');
-                initWelcomeNote();
+                // Khi ẩn app đi, tự động reset về trang sảnh để lần sau mở lên là thấy ngay
+                switchView('view-lobby');
             }
         });
 
@@ -399,7 +288,6 @@
             let weatherData = await localforage.getItem('liokun_weather_data');
             document.getElementById('weather-display').innerText = weatherData ? weatherData : "Dữ liệu trống";
 
-            // ĐÃ FIX: Lấy dữ liệu GHI CHÚ TỔNG HỢP và in ra bằng innerText
             let notesData = await localforage.getItem('liokun_general_notes');
             let notesContentEl = document.getElementById('notes-content');
             if (notesData) {
@@ -543,4 +431,3 @@
     </script>
 </body>
 </html>
-

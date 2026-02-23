@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <title>WIDGET LIOKUN 4x6</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <style>
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0; padding: 0; 
+        }
+        
+        body {
+            /* Mở rộng tối đa 100% diện tích màn hình 4x6 */
+            width: 100vw; 
+            height: 100vh; 
+            background-color: #000;
+            background-image: url('./note1a.jpg');
+            background-size: cover; 
+            background-position: center;
+            font-family: 'Segoe UI', sans-serif; 
+            color: #fff;
+            
+            /* Tắt cuộn toàn cục */
+            overflow: hidden;
+            
+            /* KHÓA CHẠM TOÀN MÀN HÌNH: Chạm vào vùng trống sẽ trơ trơ */
+            pointer-events: none; 
+            user-select: none;
+
+            /* Bố cục dàn trải 3 phần (Header - Body - Footer) */
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            align-items: center; 
+            text-align: center;
+            padding: 40px 20px; /* Tăng padding để nhìn thoáng hơn trên màn lớn */
+        }
+
+        /* VÙNG MỞ KHÓA: Chỉ những class này mới nhận thao tác nhấp */
+        .active-zone {
+            pointer-events: auto !important;
+            cursor: pointer;
+        }
+
+        /* --- PHẦN 1: HEADER --- */
+        .welcome-title {
+            font-size: 28px; /* To hơn một chút cho màn 4x6 */
+            font-weight: 900; 
+            letter-spacing: 4px; 
+            text-transform: uppercase;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.8); 
+            flex-shrink: 0;
+        }
+        
+        /* --- PHẦN 2: KÉN THÔNG TIN (BODY) --- */
+        .welcome-capsule {
+            flex: 1; /* Lệnh này giúp cái kén tự động giãn ra lấp đầy khoảng trống ở giữa */
+            width: 100%;
+            margin: 30px 0;
+            background: rgba(10, 10, 10, 0.95); 
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Cố định hoàn toàn, không cho cuộn */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Nội dung ghi chú tĩnh - Đã bỏ cuộn và đường kẻ tự sinh */
+        .ruled-paper-content {
+            color: #fff;
+            font-size: 16px; /* Chữ to hơn để dễ đọc từ xa */
+            line-height: 1.6; 
+            text-align: left; 
+            white-space: pre-wrap;
+            word-break: break-word; 
+            flex-grow: 1; 
+            
+            /* Khóa không cho chữ tràn ra ngoài, tự cắt bằng dấu ... nếu quá dài */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 15; /* Giới hạn khoảng 15 dòng hiển thị */
+            -webkit-box-orient: vertical;
+        }
+
+        /* Nút Ghi chú 🏷️ */
+        .setting-btn-capsule {
+            padding: 15px;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            flex-shrink: 0; 
+            transition: 0.2s;
+        }
+        .setting-btn-capsule:active { 
+            background: rgba(255,255,255,0.2); 
+            transform: scale(0.98); 
+        }
+
+        /* --- PHẦN 3: NÚT VÀO APP (FOOTER) --- */
+        .btn-activate {
+            background: rgba(255,255,255,0.2); 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.4); 
+            padding: 15px 50px; 
+            border-radius: 30px;
+            font-size: 18px; 
+            font-weight: bold; 
+            transition: 0.2s;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-activate:active { 
+            transform: scale(0.95); 
+            background: #fff; 
+            color: #000; 
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="welcome-title">LIOKUN'S<br>SCHEDULE</div>
+    
+    <div class="welcome-capsule">
+        <div class="ruled-paper-content" id="welcome-notes-content">Đang tải ghi chú...</div>
+        
+        <div class="setting-btn-capsule active-zone" onclick="openDeepLink('setting.html')">GHI CHÚ 🏷️</div>
+    </div>
+
+    <div class="btn-activate active-zone" onclick="openDeepLink('index.html')">MỞ LIOKUN</div>
+
+    <script>
+        // 1. Tự động lấy dữ liệu ghi chú khi Widget hiển thị
+        async function initWelcomeNote() {
+            let welcomeNotes = await localforage.getItem('liokun_welcome_notes');
+            document.getElementById('welcome-notes-content').innerText = welcomeNotes ? welcomeNotes : "Chưa có ghi chú nào. Nhấp vào GHI CHÚ 🏷️ để thêm.";
+        }
+
+        // Chạy ngay khi load file
+        initWelcomeNote();
+
+        // Đặt đồng hồ tự động cập nhật dữ liệu (Live Update) mỗi 2 giây
+        // Giúp Widget luôn hiện chữ mới nhất khi bạn sửa ở App chính
+        setInterval(initWelcomeNote, 2000);
+
+        // 2. Hàm xử lý Deep Link (Mở app/chuyển trang)
+        function openDeepLink(url) {
+            window.location.href = url;
+        }
+    </script>
+</body>
+</html>
