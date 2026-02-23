@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.liyokun.twa",
+    "sha256_cert_fingerprints": ["B0:4E:E7:29:BF:89:DB:42:DF:68:B1:A7:25:01:FD:01:64:0F:2D:1D:41:75:3B:C9:E9:FB:9E:42:3B:95:AE:FB"]
+  }
+}]
