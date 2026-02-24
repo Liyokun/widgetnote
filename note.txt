@@ -1,2 +1,70 @@
 ngày mai đi chơi
 hôm nay đi ngủ
+(function() {
+    var finalList = [];
+    var seenLinks = {};
+    var seenTitles = {}; // Thêm bộ lọc trùng lặp theo tiêu đề
+    var count = 0;
+    
+    // Lấy tất cả các thẻ <a> trên trang
+    var allLinks = document.querySelectorAll('a');
+
+    allLinks.forEach(function(a) {
+        var title = a.innerText.replace(/\s+/g, ' ').trim();
+        var link = a.href;
+
+        // ĐIỀU KIỆN LỌC SIÊU CẤP (Lớp lọc thứ 1):
+        // Đã thêm "phan". Nếu sau này có từ mới (vd: quyen, tap), bạn chỉ cần thêm vào cụm (chuong|trang|phan|quyen|tap)
+        var isRealChapter = /\/(chuong|trang|phan)-|(\/[A-Za-z0-9]{10,})$/.test(link);
+
+        // 1. Phải có chữ trong tiêu đề
+        // 2. Link phải chứa '/truyen/' và PHẢI CÓ phần định danh
+        // 3. KHÔNG lấy link chứa dấu '#'
+        if (title.length > 0 && link.includes('/truyen/') && isRealChapter && !link.includes('#')) {
+            
+            // LỌC TRÙNG LẶP: Đảm bảo link chưa từng lấy VÀ tiêu đề này chưa từng lấy
+            if (!seenLinks[link] && !seenTitles[title]) {
+                seenLinks[link] = true;
+                seenTitles[title] = true; // Đánh dấu tiêu đề này đã được thu thập
+                count++;
+                finalList.push("[" + count + "] " + title + " : " + link);
+            }
+        }
+    });
+
+    // Nếu vẫn 0 link, thử quét nới lỏng hơn nữa
+    if (count === 0) {
+        allLinks.forEach(function(a) {
+            var title = a.innerText.replace(/\s+/g, ' ').trim();
+            var link = a.href;
+            if (title.length > 0 && link.includes('/truyen/') && link.split('/').length > 5 && !link.includes('#')) {
+                
+                // Áp dụng cùng logic lọc trùng lặp cho phần nới lỏng
+                if (!seenLinks[link] && !seenTitles[title]) {
+                    seenLinks[link] = true;
+                    seenTitles[title] = true;
+                    count++;
+                    finalList.push("[" + count + "] " + title + " : " + link);
+                }
+            }
+        });
+    }
+
+    var output = (finalList.length > 0) ? finalList.join('\n') : "Vẫn không thấy! Hãy thử cuộn trang xuống dưới cùng rồi chạy lại lệnh.";
+
+    // THAY ĐỔI LOGIC: Tự động chép thẳng vào khay nhớ tạm thay vì hiển thị bảng
+    try {
+        // Lệnh copy mặc định của công cụ Console
+        copy(String(output)); 
+    } catch (e) {
+        // Cơ chế copy dự phòng (ẩn) đảm bảo 100% copy thành công nếu lệnh trên kẹt
+        var temp = document.createElement("textarea");
+        temp.value = output;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+    }
+    
+    alert("Hệ thống đã dọn sạch trùng lặp và CHÉP VÀO KHAY NHỚ TẠM!\nTổng cộng: " + count + " kết quả duy nhất.");
+})();
